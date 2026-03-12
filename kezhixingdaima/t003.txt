@@ -1,0 +1,117 @@
+minus:14
+main:49
+14
+#---minus函数运行起始地址
+minus:
+push bp 	#进入函数操作，保存调用者的栈底指针
+mova bp,sp 	#将栈顶指针的值给栈底指针，此时栈空间大小
+movi 3 #开辟栈空间，空间大小为局部变量个数
+mova R1,sp #将当前栈指针值给R1
+add R1,R0 #将R1的值加上R0的值，即栈空间的大小
+mova sp,R1 #再将R1的值给sp，即栈顶指针向上增长
+#---减法指令:3:	(-		,	x,	y,	T1	)
+
+movi 2	#函数minus中的形式参数x地址为bp-2
+mova R2,bp	#设置bp的值到R2
+sub R2,R0	#将bp和para_address的值2相减，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R1,R0  		#做减法,从被减数的内存地址中取得被减数的值放R1
+movi 3	#函数minus中的形式参数y地址为bp-3
+mova R2,bp	#设置bp的值到R2
+sub R2,R0	#将bp和para_address的值3相减，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R2,R0 		#做减法,从减数的内存地址中取得被减数的值放R2
+sub R1,R2 		 #减法运算
+movi 6	#临时变量T1地址为：6
+movb R0,R1 		#做减法,将结果放回至内存
+#---赋值指令:4:	(=		,	T1,	_,	z	)
+
+movi 6	#临时变量T1地址为：6
+movc R1,R0		#从内存中取出b的值到R1
+movi 3	#函数minus中的局部变量+z地址为bp+3
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值3相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movb R0,R1 		#将R1的值（即b）赋值给a所在的内存地址
+#---函数返回指令:5:	(ret		,	_,	_,	z	)
+
+movi 3	#函数minus中的局部变量+z地址为bp+3
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值3相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R3,R0 #从R0所指的内存地址取出返回值，并放在R3寄存器中
+#---函数调用返回时恢复环境
+mova sp,bp	#将栈顶指针的值赋值为栈底指针，即回收栈空间
+pop bp	#将调用者的栈底指针从栈中恢复
+pop pc	#恢复返回地址
+#---main函数运行起始地址
+main:
+push bp 	#进入函数操作，保存调用者的栈底指针
+mova bp,sp 	#将栈顶指针的值给栈底指针，此时栈空间大小
+movi 3 #开辟栈空间，空间大小为局部变量个数
+mova R1,sp #将当前栈指针值给R1
+add R1,R0 #将R1的值加上R0的值，即栈空间的大小
+mova sp,R1 #再将R1的值给sp，即栈顶指针向上增长
+#---赋值指令:9:	(=		,	8,	_,	a	)
+
+movi 8			#立即数赋值语句，将值8赋给R0
+mova R1,R0		#将立即数拷贝到R1中
+movi 1	#函数main中的局部变量+a地址为bp+1
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值1相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movb R0,R1		# 将立即数的值拷贝到变量的内存处
+#---赋值指令:10:	(=		,	10,	_,	b	)
+
+movi 10			#立即数赋值语句，将值10赋给R0
+mova R1,R0		#将立即数拷贝到R1中
+movi 2	#函数main中的局部变量+b地址为bp+2
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值2相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movb R0,R1		# 将立即数的值拷贝到变量的内存处
+#---函数调用传递参数
+movi 2	#传入立即数，并准备拷贝至内存sp+2处
+mova R1,sp	#栈顶指针sp的值传给R1寄存器
+add R1,R0	#得到立即数要传入的地址sp+2
+movi 2	#函数main中的局部变量+b地址为bp+2
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值2相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R2,R0		#从内存中取出参数的值到R2
+movb R1,R2	#R2为变量的值，R1为内存中的地址
+#---函数调用传递参数
+movi 1	#传入立即数，并准备拷贝至内存sp+1处
+mova R1,sp	#栈顶指针sp的值传给R1寄存器
+add R1,R0	#得到立即数要传入的地址sp+1
+movi 1	#函数main中的局部变量+a地址为bp+1
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值1相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R2,R0		#从内存中取出参数的值到R2
+movb R1,R2	#R2为变量的值，R1为内存中的地址
+#---调用函数minus
+movi 2	#压栈参数的个数
+mova R1,sp 	#栈顶指针的值传送给R1
+add R1,R0 	#栈顶指针的值加上参数的个数
+mova sp,R1 	#栈顶指针的值加上参数的个数写回
+call minus
+#---赋值指令:14:	(=		,	z,	_,	c	)
+
+movi 3	#函数main中的局部变量+c地址为bp+3
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值3相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movb R0,R3
+#---输出指令:15:	(O		,	_,	_,	c	)
+
+movi 3	#函数main中的局部变量+c地址为bp+3
+mova R2,bp	#设置bp的值到R2
+add R2,R0	#将bp和local_address的值3相加，存储在R2
+mova R0,R2	#将计算出的地址存储在R0
+movc R1,R0		#将变量的值从内存送到寄存器R1
+out R1			#输出变量的值
+#---函数调用返回时恢复环境
+mova sp,bp	#将栈顶指针的值赋值为栈底指针，即回收栈空间
+pop bp	#将调用者的栈底指针从栈中恢复
+halt

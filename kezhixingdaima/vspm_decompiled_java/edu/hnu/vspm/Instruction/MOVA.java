@@ -1,0 +1,34 @@
+/*
+ * Decompiled with CFR 0.152.
+ */
+package edu.hnu.vspm.Instruction;
+
+import edu.hnu.vspm.Instruction.Instruction;
+import edu.hnu.vspm.Machine.VSPMachine;
+
+public class MOVA
+extends Instruction {
+    private final String m_destination;
+    private final String m_source;
+
+    public MOVA(VSPMachine m, String destination, String source) {
+        super(m);
+        this.m_destination = destination;
+        this.m_source = source;
+    }
+
+    @Override
+    public void run() throws Exception {
+        byte v = VSPMachine.regfile.getRegValue(this.m_source);
+        byte oldv = VSPMachine.regfile.getRegValue(this.m_destination);
+        VSPMachine.regfile.setRegValue(this.m_destination, v);
+        byte iPC = VSPMachine.regfile.getRegValue("PC");
+        VSPMachine.regfile.setRegValue("PC", (byte)(iPC + 1));
+    }
+
+    @Override
+    public String getString() {
+        return String.format("mova \u001b[95;1m %s \u001b[0m, \u001b[93;1m %s \u001b[0m", this.m_destination, this.m_source);
+    }
+}
+

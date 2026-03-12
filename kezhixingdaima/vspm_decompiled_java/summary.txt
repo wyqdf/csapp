@@ -1,0 +1,9 @@
+Summary for ./vspm.jar
+Decompiled with CFR 0.152
+
+
+edu.hnu.vspm.Main.VSPM_Main
+----------------------------
+
+main(java.lang.String[] )
+  Unable to fully structure code

@@ -1,0 +1,72 @@
+sum:
+push bp
+mova bp,sp
+movi 3
+mova R1,sp
+add R1,R0
+mova sp,R1
+movi 2
+mova R2,bp
+sub R2,R0
+mova R0,R2
+movc R1,R0 		#做加法,从被加数的内存地址中取得被加数的值放R1
+movi 3
+mova R2,bp
+sub R2,R0
+mova R0,R2
+movc R2,R0 		#做加法,从加数的内存地址中取得被加数的值放R2
+add R1,R2 		#加法运算
+movi 6
+movb R0,R1 		#做加法,将结果放回至内存
+movi 6
+movc R1,R0		#从内存中取出b的值到R1
+movi 3
+mova R2,bp
+add R2,R0
+mova R0,R2
+movb R0,R1 		#将R1的值（即b）赋值给a所在的内存地址
+movi 3
+mova R2,bp
+add R2,R0
+mova R0,R2
+movc R3,R0
+mova sp,bp
+pop bp
+ret 
+main:
+push bp
+mova bp,sp
+movi 3
+mova R1,sp
+add R1,R0
+mova sp,R1
+movi 2			#立即数赋值语句，将值2赋给R0
+mova R1,R0		#将立即数拷贝到R1中
+movi 1
+mova R2,bp
+add R2,R0
+mova R0,R2
+movb R0,R1		# 将立即数的值拷贝到变量的内存处
+movi 3			#立即数赋值语句，将值3赋给R0
+mova R1,R0		#将立即数拷贝到R1中
+movi 2
+mova R2,bp
+add R2,R0
+mova R0,R2
+movb R0,R1		# 将立即数的值拷贝到变量的内存处
+call sum
+movi 3
+mova R2,bp
+add R2,R0
+mova R0,R2
+movb R0,R3
+movi 3
+mova R2,bp
+add R2,R0
+mova R0,R2
+movc R1,R0		#将变量的值从内存送到寄存器R1
+out R1			#输出变量的值
+mova sp,bp
+pop bp
+ret 
+halt

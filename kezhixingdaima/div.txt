@@ -1,0 +1,122 @@
+8
+IN R1         # 读入被除数 A
+IN R2         # 读入除数 B
+
+# --- 第一阶段：初始化符号标志，Mem[1] = 0 ---
+MOVI 1        # R0 = 1 (用于指定内存地址) [cite: 56]
+MOVA R3, R0   # R3 = 1 [cite: 56]
+MOVI 0        # R0 = 0 (用于准备写入的数据)
+MOVB R3, R0   # 将0写入 Mem[1]，表示最终商默认为正 [cite: 56]
+
+# --- 第二阶段：将 A 转换为绝对值 ---
+MOVI 0
+MOVA R3, R0   # R3 = 0
+SUB R3, R1    # R3 = 0 - A。若 0 > A (即 A 为负)，则标志 G=1 [cite: 56]
+
+MOVD R3, PC   # 记录当前 PC 到 R3 
+MOVI 8        # 设置跳转偏移量 (向下跳 8 条指令)
+ADD R3, R0    # 计算目标地址 [cite: 63]
+JG            # 若 A 为负，触发跳转进行符号翻转 [cite: 56]
+
+MOVD R3, PC   # 若 A 非负，准备跳过翻转代码
+MOVI 11
+ADD R3, R0    # 计算跳过翻转逻辑的地址
+JMP           # 无条件跳转 [cite: 56]
+
+# A 为负数的处理逻辑 (A翻转代码块)
+MOVI 0
+SUB R0, R1    # R0 = 0 - A [cite: 56]
+MOVA R1, R0   # A = -A (强转为正数)
+
+MOVI 1
+MOVA R3, R0   # R3 = 1 (内存地址)
+MOVI 1
+MOVB R3, R0   # 修改 Mem[1] = 1，记录出现了负号 [cite: 56]
+
+# --- 第三阶段：将 B 转换为绝对值，并动态更新符号标志 ---
+MOVI 0
+MOVA R3, R0
+SUB R3, R2    # R3 = 0 - B。若 B 为负，则 G=1 [cite: 56]
+
+MOVD R3, PC
+MOVI 8
+ADD R3, R0    
+JG            # 若 B 为负，跳转处理 B 的翻转 [cite: 56]
+
+MOVD R3, PC
+MOVI 16       # 设置跳过 B 翻转逻辑的偏移量
+ADD R3, R0    
+JMP           # 无条件跳转跳过 [cite: 56]
+
+# B 为负数的处理逻辑 (B翻转代码块)
+MOVI 0
+SUB R0, R2
+MOVA R2, R0   # B = -B (强转为正数)
+
+MOVI 1
+MOVA R3, R0   
+MOVC R0, R3   # R0 = 提取 Mem[1] 中的当前符号标志 [cite: 56]
+MOVA R3, R0   # R3 = 当前标志
+MOVI 1
+SUB R0, R3    # R0 = 1 - 标志 (如果原先是0变1，是1变0，实现负负得正) [cite: 56]
+MOVA R3, R0   # R3 = 新标志
+MOVI 1
+MOVB R0, R3   # 更新 Mem[1] = 新的符号标志 [cite: 56]
+
+# --- 第四阶段：准备并执行标准正数除法 ---
+MOVI 0
+MOVB R0, R2   # 将绝对值 B 存入 Mem[0] 释放寄存器 [cite: 56]
+MOVI 0
+MOVA R2, R0   # 初始化 R2 = 0，正式用作商 (Quotient) 累加器
+
+# 循环求商检查：判断剩余的 A 是否还够减去 B (循环起点)
+MOVI 0
+MOVC R3, R0   # 从 Mem[0] 读取 B [cite: 56]
+MOVA R0, R3   # R0 = B
+SUB R0, R1    # R0 = B - A。若 B > A，则 G=1，说明不够减了 [cite: 56]
+
+MOVD R3, PC
+MOVI 13
+ADD R3, R0    
+JG            # 若不够减，跳出循环进入结尾处理 [cite: 56]
+
+# 执行减法与商累加
+MOVI 0
+MOVC R3, R0   # R3 = B [cite: 56]
+SUB R1, R3    # A = A - B [cite: 56]
+
+MOVI 1
+ADD R2, R0    # 商 R2 = R2 + 1 [cite: 56]
+
+MOVD R3, PC
+MOVI -13      # 计算往回跳的负向偏移量 [cite: 63]
+ADD R3, R0    
+JMP           # 无条件回跳，继续循环减法 [cite: 56]
+
+
+# --- 第五阶段：循环结束，根据 Mem[1] 决定是否为商加上负号 ---
+MOVI 1
+MOVA R3, R0
+MOVC R0, R3   # 读取 Mem[1] 的最终符号标志 [cite: 56]
+MOVA R3, R0   
+MOVI 0
+SUB R3, R0    # 标志位 - 0。若标志为 1 (说明结果应为负)，G=1 [cite: 56]
+
+MOVD R3, PC
+MOVI 8
+ADD R3, R0    
+JG            # 标志为 1，跳去给商取反 [cite: 56]
+
+MOVD R3, PC
+MOVI 7
+ADD R3, R0    
+JMP           # 否则跳过取反，直接准备输出
+
+# 商取反逻辑
+MOVI 0
+SUB R0, R2    # R0 = 0 - 商 [cite: 56]
+MOVA R2, R0   # 商 = -商 (恢复为负数结果)
+
+# --- 输出结果 ---
+OUT R2        # 最终商输出 [cite: 56]
+HALT          # 停机 [cite: 56]

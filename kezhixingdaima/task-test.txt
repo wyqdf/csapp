@@ -1,0 +1,259 @@
+; 简单调度器-两个任务时间片轮转
+
+TASK1_VALUE:DW 97 		; 任务1的初始输出值
+TASK2_VALUE:DW 122		; 任务2的初始输出值  
+
+; boot阶段
+; 设置时钟中断处理程序入口到IVT地址0x0000
+MOVI CLOCK_ISR
+MOVA R1, R0
+MOVI 0x0000      ; IVT地址
+MOVB R0, R1      ; [0x0000] = CLOCK_ISR
+
+; 设置键盘中断处理程序入口到IVT地址0x0001
+MOVI KEYBOARD_ISR
+MOVA R1, R0
+MOVI 0x0001      ; IVT地址
+MOVB R0, R1      ; [0x0001] = KEYBOARD_ISR
+
+; 初始化全局栈指针
+MOVI 0x7FFF
+MOVA SP, R0             ; SP = 0x37FF
+
+; 启用按键
+MOVI 0xA000
+MOVA R1, R0
+MOVI 0x0001
+MOVB R1, R0
+
+; 启用中断控制器
+MOVI 0x9000
+MOVA R1, R0
+MOVI 0x0003
+MOVB R1, R0
+; 设置中断优先级（基地址0x9002，偏移+0时钟中断，偏移+2按键中断，优先级数字越小，优先级越高，若启用，按键中断优先）
+MOVI 0x9002
+MOVA R1, R0
+MOVI 0x1000
+MOVB R1, R0
+; 设置中断优先级（若启用，时钟中断优先，若与上同时启用，时钟中断优先）
+; MOVI 0x9004
+; MOVA R1, R0
+; MOVI 0x2000
+; MOVB R1, R0
+
+; 启用定时器
+MOVI 0x8000				; 定时器基地址
+MOVA R1, R0
+MOVI 0x0003
+MOVB R1, R0
+MOVI 1000				; 初始化重装载寄存器为1000
+MOVB [R1+2], R0
+MOVI 1000
+MOVB [R1+4], R0			; 初始化计数寄存器
+
+; 启用全局中断
+MOVI 1
+MOVA SR, R0             ; 设置SR的第0位为1
+
+; 应用程序
+MAIN:
+; 任务1的TCB地址
+MOVI TASK1_LOOP      ; 任务1入口地址
+MOVA R1, R0
+MOVI 0x0806      ; TCB地址+12（PC的偏移）
+MOVB R0, R1      ; [0x7006] = PC=TASK1_LOOP
+
+MOVI 0x7EFF      ; 任务1栈基址
+MOVA R1, R0
+MOVI 0x0804      ; TCB+8（SP的偏移）
+MOVB R0, R1      ; [0x0804] = SP=0x7EFF
+
+MOVI 0x0001  
+MOVA R1, R0
+MOVI 0x0805      ; TCB地址+10（SR偏移）
+MOVB R0, R1          ; [0x0805] = SR=0x0001
+
+; 任务2的TCB地址
+MOVI TASK2_LOOP      ; 任务2入口地址
+MOVA R1, R0
+MOVI 0x080E
+MOVB R0, R1      ; [0x080E] = PC=TASK2_LOOP
+
+MOVI 0x7DFF      ; 任务2栈基址
+MOVA R1, R0
+MOVI 0x080C
+MOVB R0, R1      ; [0x080C] = SP=0x7DFF
+
+MOVI 0x0001  
+MOVA R1, R0
+MOVI 0x080D      ; TCB地址+10（SR偏移）
+MOVB R0, R1          ; [0x080D] = SR=0x0001
+
+MOVI 0           ; 初始任务1（0:任务1, 1:任务0）
+MOVA R1, R0
+MOVI 0x0820
+MOVB R0, R1      ; [0x0820] = 0
+
+MAIN_LOOP:
+	JMP TASK1_LOOP ; 执行任务1
+    JMP MAIN_LOOP       ; 主循环
+
+CLOCK_ISR:
+    ; ==== 保存所有寄存器到栈 ====
+    PUSH R0
+    PUSH R1
+    PUSH R2
+    PUSH R3
+    PUSH SP
+    
+    ; ==== 保存当前任务上下文 ====
+    ; 1. 获取当前任务ID
+    MOVI 0x0820
+    MOVC R1, R0     ; R1 = currentTaskId
+
+    ; 2. 计算TCB地址: TCB地址 = 0x0800 + R1*8
+    MOVI 0x0800
+    MOVA R2, R0     ; R2 = 0x0800
+    MOVA R3, R1
+    ADD R3, R3      ; R3 *= 2 (左移1位)
+    ADD R3, R3      ; R3 *= 4 (左移2位)
+    ADD R3, R3      ; R3 *= 8 (左移3位)
+    ADD R2, R3      ; R2 += R1*8
+
+    ; 3. 从栈中读取寄存器并保存到TCB
+    MOVA R0, SP      ; R0 指向栈顶（SP_old的位置）
+    MOVC R3, [R0+1]    ; 读取 SP_old -> R3
+    MOVB [R2+4], R3    ; 保存到 TCB.SP (偏移+8)
+    MOVC R3, [R0+2]    ; 读取 R3 -> R3
+    MOVB [R2+3], R3    ; 保存到 TCB.R3 (偏移+6)
+    MOVC R3, [R0+3]    ; 读取 R2 -> R3
+    MOVB [R2+2], R3    ; 保存到 TCB.R2 (偏移+4)
+    MOVC R3, [R0+4]    ; 读取 R1 -> R3
+    MOVB [R2+1], R3    ; 保存到 TCB.R1 (偏移+2)
+    MOVC R3, [R0+5]    ; 读取 R0 -> R3
+    MOVB [R2+0], R3    ; 保存到 TCB.R0 (偏移+0)
+
+    ; 4. 保存硬件自动压入的 SR 和 PC
+    MOVC R3, [R0+6]    ; 读取 SR -> R3（栈偏移 = SP + 10）
+    MOVB [R2+5], R3    ; 保存到 TCB.SR (偏移+10)
+    MOVC R3, [R0+7]    ; 读取 PC -> R3（栈偏移 = SP + 12）
+    MOVB [R2+6], R3    ; 保存到 TCB.PC (偏移+12)
+ 
+    ADD SP, #7         ; 弹出寄存器
+        
+    ; ==== 切换到下一个任务 ====
+    ; 1. 更新任务ID (0/1轮转)
+    MOVI 0x0820
+    MOVC R1, R0        ; R1 = currentTaskId
+    MOVI 1
+    ADD R1, R0         ; R1 = currentTaskId + 1
+
+    MOVI 2
+    SUB R0, R1         ; G = (R1 < 2) ? 0 : 1
+    JG SKIP_RESET      ; 如果 R1 < 2，跳过重置
+
+    MOVI 0             ; 否则 R1 = 0
+    MOVA R1, R0
+
+SKIP_RESET:
+    MOVI 0x0820
+    MOVB R0, R1        ; 保存新任务ID
+
+    ; 2. 计算新TCB地址
+    MOVI 0x0800
+    MOVA R2, R0
+    MOVA R3, R1
+    ADD R3, R3         ; R3 *= 2
+    ADD R3, R3         ; R3 *= 4
+    ADD R3, R3         ; R3 *= 8
+    ADD R2, R3         ; R2 = 新TCB地址
+
+    ; 3. 从TCB恢复寄存器
+    ; 恢复 R0-R2（R3 最后恢复）
+    MOVC R0, [R2+0]    ; 恢复 R0
+    MOVC R1, [R2+1]    ; 恢复 R1
+    MOVC R3, [R2+2]    ; 恢复 R2 -> 暂存到 R3（避免覆盖 R2）
+    MOVB [R2+2], R3    ; 临时保存 R2 的值
+
+    ; 恢复 SP、SR、PC
+    MOVC R3, [R2+4]    ; 读取新任务的 SP -> R3
+    MOVA SP, R3        ; 恢复 SP
+
+    ; 构造 IRET 所需的栈帧（SR 和 PC）
+    MOVC R3, [R2+6]    ; 读取新任务的 PC -> R3
+    PUSH R3            ; 压入 PC
+    MOVC R3, [R2+5]    ; 读取新任务的 SR -> R0
+    PUSH R3            ; 压入 SR
+
+    ; 最后恢复 R2 和 R3
+    MOVC R3, [R2+3]    ; 恢复 R3
+    MOVC R2, [R2+2]    ; 恢复 R2    
+
+    ; ==== 中断返回 ====
+    IRET               ; 弹出 SR 和 PC，跳转到新任务
+    
+
+KEYBOARD_ISR:
+    ; 保存现场
+    PUSH R0
+    PUSH R1
+    PUSH R2
+    PUSH R3
+    ; 替换任务A(+1)和任务B(-1)的输出值
+    ; MOVI TASK1_VALUE
+    ; MOVC R1, R0
+    ; ADD R1, #1
+    ; MOVB R0, R1
+    ; MOVI TASK2_VALUE
+    ; MOVC R1, R0
+    ; SUB R1, #1
+    ; MOVB R0, R1
+    
+    ; 替换任务A(+按键值)和任务B(-按键值)的输出值
+    MOVI TASK1_VALUE
+    MOVC R1, R0
+    MOVI 0xA004
+    MOVC R2, R0
+    MOVA R3, R2
+    ADD R1, R2
+    MOVI TASK1_VALUE 
+    MOVB R0, R1
+    
+    MOVI TASK2_VALUE
+    MOVC R1, R0
+    MOVA R2, R3
+    SUB R1, R2
+    MOVI TASK2_VALUE 
+    MOVB R0, R1    
+    ; 恢复现场
+    POP R3
+    POP R2
+    POP R1
+    POP R0
+    IRET                 ; 跳转回被中断的代码
+
+TASK1_LOOP:
+    MOVI TASK1_VALUE            ; 输出a
+    MOVC R1, R0
+    MOVA R0, R1
+    OUT R0
+    MOVI 30           ; 循环
+DELAY1:
+    SUB R0, #1
+    JG DELAY1
+    JMP TASK1_LOOP
+
+  
+TASK2_LOOP:
+    MOVI TASK2_VALUE            ; 输出z
+    MOVC R1, R0
+    MOVA R0, R1    
+    OUT R0
+    MOVI 30           ; 延时
+DELAY2:
+    SUB R0, #1
+    JG DELAY2
+    JMP TASK2_LOOP     
+    
+HALT                     ; 安全停机指令    
