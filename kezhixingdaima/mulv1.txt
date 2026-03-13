@@ -2,61 +2,49 @@ IN R1         # 读入 被乘数 A
 IN R2         # 读入 乘数 B
 
 # --- 阶段一：确保乘数 B 为正数 ---
-MOVI 0
-SUB R0, R2    # R0 = 0 - B。若 B 为负，G=1
+MOVI -1       
+SUB R2, R0    # R2 - R0 (即 B - (-1))。若 B >= 0，G=1
 
-#条件跳转1
-MOVD R3, PC
-MOVI 8        
-ADD R3, R0    
-JG            # B为负，跳去同时翻转A和B
-
-#条件跳转2
-MOVD R3, PC
+MOVD R3, PC   
 MOVI 10       
 ADD R3, R0    
-JMP           # B非负，跳过翻转代码
+JG            # 若 B 非负，直接跨越翻转
 
-# 翻转代码块 (A = -A, B = -B)
-MOVI 0
+#  翻转代码块 (A = -A, B = -B)
+MOVI 0        
 SUB R0, R2    
 MOVA R2, R0   # 强转 B 为正数
-MOVI 0
+
+MOVI 0        
 SUB R0, R1    
 MOVA R1, R0   # 连带翻转 A 保证乘积不变
 
 # --- 阶段二：初始化 ---
-MOVI 0
+MOVI 0        
 MOVB R0, R1   # 将处理好的 A 存入 Mem[0]
-MOVI 0
-MOVA R1, R0   # 清空 R1，用来充当最终的 Sum
+MOVI 0        
+MOVA R1, R0   # 清空 R1，充当最终的 Sum
 
 # --- 阶段三：循环累加 ---
-MOVI 0
-SUB R2, R0    # 执行 B - 0。若 B>0 则 G=1
+# [循环检查起点]
+MOVI 1        
+SUB R0, R2    # 执行 1 - B。若 B 为 0，则 1>0 成立，G=1
 
-#条件跳转1
-MOVD R3, PC   
-MOVI 8        
-ADD R3, R0    
-JG            # B还大于0，跳入累加块
-
-# 条件跳转2
 MOVD R3, PC   
 MOVI 13       
 ADD R3, R0    
-JMP           # B为0，直接跳到程序结束
+JG            # 若 B 等于 0，跳出循环去输出
 
-# [累加执行块]
-MOVI 0
+# [自然掉入] 累加执行块
+MOVI 0        
 MOVC R0, R0   # 取出 Mem[0] 中的 A
 ADD R1, R0    # Sum = Sum + A
-MOVI 1
+
+MOVI 1        
 SUB R2, R0    # B = B - 1
 
-#跳转
 MOVD R3, PC   
-MOVI -15      # 向上偏移回到循环检查起点
+MOVI -11      # 向上偏移回到循环检查起点
 ADD R3, R0    
 JMP           # 无条件继续循环
 
